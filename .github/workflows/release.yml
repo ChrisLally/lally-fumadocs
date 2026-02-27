@@ -24,8 +24,27 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: 24
+
+      - name: Verify npm version for trusted publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NPM_VERSION="$(npm --version)"
+          echo "$NPM_VERSION"
+          node -e '
+            const version = process.env.NPM_VERSION;
+            if (!version) {
+              console.error("npm version is unavailable in environment");
+              process.exit(1);
+            }
+            const [major, minor, patch] = version.split(".").map(Number);
+            const ok = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)));
+            if (!ok) {
+              console.error(`npm ${version} is too old for trusted publishing (need >= 11.5.1)`);
+              process.exit(1);
+            }
+          ' 
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
@@ -78,6 +97,12 @@ jobs:
 
       - name: Check types
         run: pnpm run check-types
+
+      - name: Ensure tokenless trusted publishing
+        shell: bash
+        run: |
+          unset NODE_AUTH_TOKEN NPM_TOKEN
+          npm config delete //registry.npmjs.org/:_authToken || true
 
       - name: Publish package
         run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
