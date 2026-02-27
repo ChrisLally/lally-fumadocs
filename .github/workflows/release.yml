@@ -47,7 +47,7 @@ jobs:
           ' 
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --config.auto-install-peers=false
 
       - name: Resolve package from tag
         id: meta
